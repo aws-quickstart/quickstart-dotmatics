@@ -65,7 +65,7 @@
     },
     {
         "ParameterKey": "pInstallBucketPrefix",
-        "ParameterValue": "biregister-release/oraclebins"
+        "ParameterValue": "bioregister-release/oraclebins"
     },
     {
         "ParameterKey": "pOracleInstanceType",
