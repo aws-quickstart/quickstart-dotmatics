@@ -5,7 +5,7 @@
     },
     {
         "ParameterKey": "pEC2KeyPair",
-        "ParameterValue": "paulu-hclscollab-taskcat"
+        "ParameterValue": "devops-prod"
     },
     {
         "ParameterKey": "pPrivateSubnet1CIDR",
@@ -37,7 +37,7 @@
     },
     {
         "ParameterKey": "QSS3BucketName",
-        "ParameterValue": "$[taskcat_autobucket]"
+        "ParameterValue": "quickstart-test-dotmatics-devops-v3"
     },
     {
         "ParameterKey": "QSS3KeyPrefix",
@@ -61,11 +61,11 @@
     },
     {
         "ParameterKey": "pInstallBucketName",
-        "ParameterValue": "devspacepaul"
+        "ParameterValue": "quickstart-test-dotmatics-devops-v2"
     },
     {
         "ParameterKey": "pInstallBucketPrefix",
-        "ParameterValue": "oraclebins"
+        "ParameterValue": "biregister-release/oraclebins"
     },
     {
         "ParameterKey": "pOracleInstanceType",
