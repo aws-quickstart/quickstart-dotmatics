@@ -750,6 +750,8 @@ Resources:
           aws s3 sync s3://${pInstallBucketName}/${pInstallBucketPrefix}/   /efs/config/browser  --exclude "*.*" --include "browser-install-*.zip" --quiet
           aws s3 sync s3://${pInstallBucketName}/${pInstallBucketPrefix}/   /efs/config/browser  --exclude "*.*" --include "bioregister-*.war" --quiet
 
+
+          chown -R ec2-user:ec2-user /efs/config/browser/
           ls -lsa /efs/config/browser/
 
 
