@@ -248,6 +248,7 @@ Parameters:
     Description: 'Configuration: Single - One instance only,  Data Guard - Two instances
       (Primary + Standby)'
     Type: String
+    Default: Single
   pInstallBucketName:
     AllowedPattern: "^[0-9a-zA-Z-]+([0-9a-zA-Z-]+)*$"
     ConstraintDescription: Bucket name can include numbers, lowercase letters, uppercase
