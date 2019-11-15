@@ -40,7 +40,7 @@ if [ -f "$SRC_FILE" ]; then
     mv -f $CATALINA_HOME/webapps/browser/WEB-INF/$FILE $CATALINA_HOME/webapps/browser/WEB-INF/${FILE}_backup || true
     ln -s $SRC_FILE $CATALINA_HOME/webapps/browser/WEB-INF/$FILE
 else
-    echo "$BROWSER_LICENSE_FILE"
+    echo "$BROWSER_LICENSE_FILE does not exist"
 fi
 
 mkdir -p $CATALINA_HOME/webapps/bioregister

@@ -4,7 +4,6 @@ WORKDIR $CATALINA_HOME
 
 ENV BROWSER_PROP_FILE /config/browser.properties
 ENV BROWSER_LICENSE_FILE /config/dotmatics.license.txt
-ENV BROWSER_ZIP_FILE /config/browser-install*.zip
 ENV BIOREGISTER_WAR_FILE /config/bioregister*.war
 ENV BIOREGISTER_GROOVY /config/bioregister.groovy
 

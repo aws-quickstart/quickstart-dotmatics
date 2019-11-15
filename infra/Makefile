@@ -51,8 +51,29 @@ create_volume_dir:
 	mkdir -p $$PWD/target/docker/volume/$(ENV)
 
 stack_deploy_browser: build_docker_images stack_create_network docker_cleanup create_volume_dir
-	STACK_NAME=$(BRO_STACK_NAME) ENV=$(ENV) docker stack deploy --with-registry-auth  -c docker/stack/browser/browser.yml -c docker/stack/browser/browser-$(ENV).yml $(BRO_STACK_NAME)
+	$(eval MEM_80_PCT=$(shell grep MemTotal /proc/meminfo | awk '{print $$2 / 1024*80/100"m"}'  ))
+	$(eval MEM_40_PCT=$(shell grep MemTotal /proc/meminfo | awk '{print $$2 / 1024*40/100"m"}'  ))
+	$(eval MEM_10_PCT=$(shell grep MemTotal /proc/meminfo | awk '{print $$2 / 1024*10/100"m"}'  ))
+
+	echo $(MEM_80_PCT) >  $$PWD/target/mem80pct
+	echo $(MEM_40_PCT) >  $$PWD/target/mem40pct
+	echo $(MEM_10_PCT) >  $$PWD/target/mem10pct
+
+	ls -ls /efs/config/browser/
+ifeq (,$(wildcard $(BIOREGISTER_GROOVY)))
+	$(warning [WARN] $(BIOREGISTER_GROOVY) doesn't exist. It won't deploy bioregister. )
+	BROWSER_LIMIT_MEM=$(MEM_80_PCT)  BIOREGISTER_LIMIT_MEM=$(MEM_10_PCT)  TRAEFIK_LIMIT_MEM=$(MEM_10_PCT)	STACK_NAME=$(BRO_STACK_NAME) ENV=$(ENV) docker stack deploy --with-registry-auth  -c docker/stack/browser/browser.yml -c docker/stack/browser/browser-$(ENV).yml $(BRO_STACK_NAME)
 	make scale_down_bioregister ENV=$(ENV)
+
+else ifeq (,$(wildcard $(BIOREGISTER_WAR)))
+	$(warning [WARN] $(BIOREGISTER_WAR) doesn't exist. It won't deploy bioregister. )
+	BROWSER_LIMIT_MEM=$(MEM_80_PCT)  BIOREGISTER_LIMIT_MEM=$(MEM_10_PCT)  TRAEFIK_LIMIT_MEM=$(MEM_10_PCT)	STACK_NAME=$(BRO_STACK_NAME) ENV=$(ENV) docker stack deploy --with-registry-auth  -c docker/stack/browser/browser.yml -c docker/stack/browser/browser-$(ENV).yml $(BRO_STACK_NAME)
+	make scale_down_bioregister ENV=$(ENV)
+else
+	BROWSER_LIMIT_MEM=$(MEM_40_PCT)  BIOREGISTER_LIMIT_MEM=$(MEM_40_PCT)  TRAEFIK_LIMIT_MEM=$(MEM_10_PCT)	STACK_NAME=$(BRO_STACK_NAME) ENV=$(ENV) docker stack deploy --with-registry-auth  -c docker/stack/browser/browser.yml -c docker/stack/browser/browser-$(ENV).yml $(BRO_STACK_NAME)
+
+endif
+
 
 stack_rm:  stack_rm_browser
 
@@ -62,19 +83,8 @@ stack_rm_browser:
 
 scale_down_bioregister:
 	ls -ls /efs/config/browser/
-ifeq (,$(wildcard $(BIOREGISTER_GROOVY)))
-	$(warning [WARN] $(BIOREGISTER_GROOVY) doesn't exist. It is going to scale down bioregister container to 0 )
-	docker service scale browser-$(ENV)_bioregister=0 || true
-else
-	$(info $(BIOREGISTER_GROOVY) exist. )
-endif
+	docker service scale browser-$(ENV)_bioregister=0
 
-ifeq (,$(wildcard $(BIOREGISTER_WAR)))
-	$(warning [WARN] bioregister.war doesn't exist. It is going to scale down bioregister container to 0 )
-	docker service scale browser-$(ENV)_bioregister=0 || true
-else
-	$(info $(BIOREGISTER_WAR) exist. )
-endif
 
 
 docker_cleanup:
