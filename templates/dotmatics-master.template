@@ -194,7 +194,7 @@ Parameters:
   pWebAccessCIDR:
     Description: Will only be used if Web Access Security Group is not specified. Enter 0.0.0.0/0 if you want to open it to the world.
     Type: String
-    Default: "10.80.0.0/16"  
+    Default: "10.80.0.0/16"
   pVPCCIDR:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
@@ -430,3 +430,6 @@ Outputs:
     Condition: cDNSRecord
     Description: URL to Load Balancer to access Domatics
     Value: !GetAtt rDotmatics.Outputs.oDNSUrl
+  oWebAccessCidrSG:
+    Description: Security Group of WebAccessCidr
+    Value: !GetAtt rDotmatics.Outputs.oWebAccessCidrSG
