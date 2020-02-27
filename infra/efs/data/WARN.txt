@@ -1,0 +1,5 @@
+### WARNING
+
+1. Do not manually update /efs/data/browser/WEB-INF/browser.properties
+
+2. Do not manually update /efs/data/browser/WEB-INF/dotmatics.license.txt

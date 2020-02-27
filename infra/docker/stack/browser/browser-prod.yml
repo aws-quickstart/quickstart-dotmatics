@@ -1,0 +1,39 @@
+# @author Laurent Krishnathas
+# @year 2018
+version: '3.5'
+
+services:
+  traefik:
+    deploy:
+      resources:
+        limits:
+          memory: ${TRAEFIK_LIMIT_MEM}
+
+  browser:
+    image: browser:dotmatics-1.0
+    volumes:
+      - /efs/config/tmp/:/config/tmp:z
+      - /efs/data/browser/WEB-INF:/config/WEB-INF:z
+      - /efs/logs/browser:/usr/local/tomcat/logs:z
+      - /efs/data/browser/tempfiles:/usr/local/tomcat/webapps/browser/tempfiles:z
+      - /efs/data/browser/pdf:/usr/local/tomcat/webapps/browser/pdf:z
+      - /efs/data/browser/profiles:/usr/local/tomcat/webapps/browser/images/profiles:z
+      - '/efs/data/browser/raw data:/usr/local/tomcat/webapps/browser/raw data:z'
+
+    deploy:
+      resources:
+        limits:
+          memory: ${BROWSER_LIMIT_MEM}
+
+  bioregister:
+    image: bioregister:dotmatics-1.0
+    volumes:
+      - /efs/config/tmp:/config/tmp:z
+      - /efs/data/bioregister.groovy:/config/tmp/bioregister.groovy:z
+      - /efs/data/bioregister/c2c_attachments:/c2c_attachments:z
+      - /efs/data/browser/WEB-INF:/config/WEB-INF:z
+      - /efs/logs/bioregister:/usr/local/tomcat/logs:z
+    deploy:
+      resources:
+        limits:
+          memory: ${BIOREGISTER_LIMIT_MEM}

@@ -75,7 +75,7 @@ services:
       - "traefik.frontend.rule=PathPrefix:/bioregister"
       - "traefik.port=8080"
     healthcheck:
-      start_period: 180s
+      start_period: 600s
       test: ["CMD", "curl", "-f", "http://localhost:8080/bioregister"]
       interval: 60s
       timeout: 20s

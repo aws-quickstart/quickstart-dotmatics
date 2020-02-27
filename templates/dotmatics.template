@@ -526,7 +526,7 @@ Resources:
       MinSize: '1'
       MaxSize: '1'
       HealthCheckType: ELB
-      HealthCheckGracePeriod: 300
+      HealthCheckGracePeriod: 600
       Tags:
         - Key: Name
           Value: "Dotmatics App Server"
@@ -642,146 +642,44 @@ Resources:
       SecurityGroups:
       - !Ref rSecurityGroupAppServers
       - !GetAtt rOracleStack.Outputs.OracleServerAccessSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 50
       UserData:
         Fn::Base64: !Sub
         - |
           #!/bin/sh
           set -x
 
-          echo "script version: 2019.10.24 10:00am"
-          date
-          uname -a
-          id
-          cat /etc/os-release
-          whoami
+            echo "script version: 2020.02.14 10:00am"
+            date
+            uname -a
+            id
+            cat /etc/os-release
+            whoami
+
+            export USERDATA_FILE=/tmp/userdata.sh
+            aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/userdata.sh $USERDATA_FILE
+            chmod +x $USERDATA_FILE
+
+            QS_BUCKET_NAME=${QSS3BucketName} \
+            QS_KEY_PREFIX=${QSS3KeyPrefix} \
+            P_INSTALL_BUCKET_NAME=${pInstallBucketName} \
+            P_INSTALL_BUCKET_PREFIX=${pInstallBucketPrefix} \
+            PRIVATE_DNS_NAME=${rOracleStack.Outputs.PrivateDNSName} \
+            P_DATABASE_PASS=${pDatabasePass} \
+            P_DATABASE_NAME=${pDatabaseName} \
+            P_DNS_ZONE_ID=${pDnsHostedZoneID} \
+            P_DNS_NAME=${pDNSName} \
+            P_DNS_ZONE_APEX_DOMAIN=${pDnsHostedZoneApexDomain} \
+            ALB_DNS_NAME=${rApplicationLoadBalancer.DNSName} \
+            DATABASE_PORT=${databasePort} \
+            AWS_STACK_NAME=${AWS::StackName} \
+            AWS_REGION=${AWS::Region} \
+            $USERDATA_FILE
 
 
-          yum update -y -q
-          yum install  -q  -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
-          systemctl enable amazon-ssm-agent
-          systemctl start amazon-ssm-agent
-          systemctl status amazon-ssm-agent
-
-
-          echo "S3 Bucket Info"
-          aws s3 ls s3://${QSS3BucketName}/
-          aws s3 ls s3://${QSS3BucketName}/${QSS3KeyPrefix}
-          aws s3 ls s3://${pInstallBucketName}/
-          aws s3 ls s3://${pInstallBucketName}/${pInstallBucketPrefix}/
-
-
-          yum install -y -q  gem tmux tree wget ntp unzip tzdata python-pip
-          yum install -y -q  amazon-linux-extras install docker
-          usermod -a -G docker ec2-user
-          systemctl enable docker
-          systemctl start docker
-          docker version
-
-
-          mkdir -p /project/browser
-          chmod -R 755 /project/browser
-          aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}infra/ /project/browser/ --recursive --quiet
-          chown -R ec2-user:ec2-user /project
-          ls -lsa  /project/browser/
-
-          mv /project/browser/infrastructor/templates/browser.service.tmpl /etc/systemd/system/browser.service
-          chmod 644 /etc/systemd/system/browser.service
-          chown root:root /etc/systemd/system/browser.service
-
-
-          #curl -fsSL https://goss.rocks/install | sh
-          #/usr/local/bin/goss -g  /project/browser/infrastructor/goss/goss-base.yaml validate --sleep 60s --retry-timeout 30s
-          #echo "GOSS validate Success"
-
-
-          curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-          python get-pip.py
-          pip install -q https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-          /usr/bin/cfn-init -v --stack ${AWS::StackName} --resource rAutoScalingConfigApp --configsets MountConfig --region ${AWS::Region}
-          crontab /home/ec2-user/crontab
-
-
-          aws s3 sync s3://${pInstallBucketName}/${pInstallBucketPrefix}/   /efs/config/browser  --exclude "*.*" --include "bioregister.groovy" --quiet
-          ls -lsa  /efs/config/browser
-
-          if [  -f '/efs/config/browser/bioregister.groovy' ]
-              then
-                  echo "bioregister.groovy exists,then update ServerURL and oracle host."
-
-                  if [ '${pDnsHostedZoneID}' = '' ]
-                      then
-                        echo "pDnsHostedZoneID is empty."
-                        sed -i 's/http:\/\/localhost:8080/http:\/\/${rApplicationLoadBalancer.DNSName}/g'  /efs/config/browser/bioregister.groovy
-                      else
-                        echo "pDnsHostedZoneID is not empty."
-                        sed -i 's/http:\/\/localhost:8080/https:\/\/${pDNSName}.${pDnsHostedZoneApexDomain}/g'  /efs/config/browser/bioregister.groovy
-                  fi
-                  sed -i 's/localhost/${rOracleStack.Outputs.PrivateDNSName}/g'  /efs/config/browser/bioregister.groovy
-                  sed -i 's/c:\\\\c2c_attachments/\/c2c_attachments/g' /efs/config/browser/bioregister.groovy
-                  sed -i 's/XE/${pDatabaseName}/g' /efs/config/browser/bioregister.groovy
-              else
-                  echo "bioregister.groovy doesn't exist,then bioregister will not be launched."
-          fi
-
-          if [ ! -f '/efs/config/browser/browser.properties' ]
-          then
-              echo "Not found browser.properties. Start downloading."
-              aws s3 cp s3://${pInstallBucketName}/${pInstallBucketPrefix}/browser.properties  /efs/config/browser/browser.properties --quiet
-
-              if [  -f '/efs/config/browser/browser.properties' ]; then
-                    echo 'downloaded browser.properties.'
-                else
-                    echo '[ERROR] browser.properties not found, please check it whether you upload browser.properties to s3 or not.'
-              fi
-
-              sed -i '/^db.description/s/=.*$/=(DESCRIPTION\\=(ADDRESS\\=(PROTOCOL\\=TCP)(HOST\\=${rOracleStack.Outputs.PrivateDNSName})(PORT\\=${databasePort}))(CONNECT_DATA\\=(SERVICE_NAME\\=${pDatabaseName})) )/' /efs/config/browser/browser.properties
-              sed -i '/^db.server/s/=.*$/=${rOracleStack.Outputs.PrivateDNSName}/' /efs/config/browser/browser.properties
-              sed -i '/^db.dba.password/s/=.*$/=${pDatabasePass}/' /efs/config/browser/browser.properties
-              sed -i '/^db.sid/s/=.*$/=${pDatabaseName}/' /efs/config/browser/browser.properties
-              sed -i '/^updates.setting/s/=.*$/=new/' /efs/config/browser/browser.properties
-
-              if [ '${pDnsHostedZoneID}' = '' ]
-                then
-                  echo "pDnsHostedZoneID is empty."
-                  sed -i '/^app.browserurl/s/=.*$/=http:\/\/${rApplicationLoadBalancer.DNSName}/' /efs/config/browser/browser.properties
-                else
-                  echo "pDnsHostedZoneID is not empty."
-                  sed -i '/^app.browserurl/s/=.*$/=https:\/\/${pDNSName}.${pDnsHostedZoneApexDomain}/' /efs/config/browser/browser.properties
-              fi
-          else:
-              echo "browser.properties exists."
-          fi
-
-          rm -rf /efs/config/browser/browser-install*
-          rm -rf /efs/config/browser/dotmatics.license.txt
-
-          echo "Downloading war/zip files."
-          aws s3 cp s3://${pInstallBucketName}/${pInstallBucketPrefix}/dotmatics.license.txt  /efs/config/browser/dotmatics.license.txt --quiet
-          aws s3 sync s3://${pInstallBucketName}/${pInstallBucketPrefix}/   /efs/config/browser  --exclude "*.*" --include "browser-install-*.zip" --quiet
-          aws s3 sync s3://${pInstallBucketName}/${pInstallBucketPrefix}/   /efs/config/browser  --exclude "*.*" --include "bioregister-*.war" --quiet
-
-          chown -R ec2-user:ec2-user /efs/
-
-          ls -lsa /efs/config/browser/
-
-
-          if [  -f '/efs/config/browser/dotmatics.license.txt' ]; then
-              echo 'dotmatics.license.txt does exist.'
-          else
-              echo '[ERROR] dotmatics.license.txt not found '
-          fi
-
-          docker swarm init
-          systemctl stop browser.service
-          systemctl start browser.service
-          sleep 5
-          systemctl status browser.service
-
-          docker version
-          docker service ls
-          echo "Finished installation."
-
-          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource rAutoScalingGroupApp --region ${AWS::Region}
         - { databasePort: !FindInMap [ mDotmaticsMappings, database, port]}
   ###
   ### App Server Roles

@@ -22,6 +22,23 @@ else
     date
 fi
 
+BIOREGISTER_WAR_FILE=$(ls /config/tmp/bioregister*.war)
+BIOREGISTER_WAR_COUNT=$(ls /config/tmp/bioregister*.war | wc -l | xargs )
+
+if [ "$BIOREGISTER_WAR_COUNT" -gt 1 ]; then
+    echo "[ERROR] Too many bioregister installation war files."
+    exit 1
+elif [ "$BIOREGISTER_WAR_COUNT" -lt 1 ]; then
+    echo "[ERROR] bioregister installation war file not found."
+    exit 1
+elif [ ! -f "$BIOREGISTER_WAR_FILE" ]; then
+    echo "[ERROR] bioregister installation war file doesn't exist"
+    exit 1
+else
+    unzip  -qq $BIOREGISTER_WAR_FILE -d $CATALINA_HOME/webapps/bioregister
+    ls -ls $CATALINA_HOME/webapps/bioregister
+fi
+
 
 SRC_FILE=$BROWSER_PROP_FILE
 FILE=browser.properties
@@ -30,7 +47,8 @@ if [ -f "$SRC_FILE" ]; then
     mv -f $CATALINA_HOME/webapps/browser/WEB-INF/$FILE $CATALINA_HOME/webapps/browser/WEB-INF/${FILE}_backup || true
     ln -s $SRC_FILE $CATALINA_HOME/webapps/browser/WEB-INF/$FILE
 else
-    echo "$BROWSER_PROP_FILE does not exist"
+    echo "$SRC_FILE does not exist"
+    exit 1
 fi
 
 
@@ -40,15 +58,8 @@ if [ -f "$SRC_FILE" ]; then
     mv -f $CATALINA_HOME/webapps/browser/WEB-INF/$FILE $CATALINA_HOME/webapps/browser/WEB-INF/${FILE}_backup || true
     ln -s $SRC_FILE $CATALINA_HOME/webapps/browser/WEB-INF/$FILE
 else
-    echo "$BROWSER_LICENSE_FILE does not exist"
-fi
-
-mkdir -p $CATALINA_HOME/webapps/bioregister
-if ls $BIOREGISTER_WAR_FILE 1> /dev/null 2>&1; then
-  echo "files do exist"
-  unzip  -qq $BIOREGISTER_WAR_FILE -d $CATALINA_HOME/webapps/bioregister
-else
-    echo "$BIOREGISTER_WAR_FILE does not exist"
+    echo "$SRC_FILE does not exist"
+    exit 1
 fi
 
 SRC_FILE=$BIOREGISTER_GROOVY
@@ -56,7 +67,8 @@ FILE=bioregister.groovy
 if [ -f "$SRC_FILE" ]; then
     ln -s $SRC_FILE $CATALINA_HOME/webapps/$FILE
 else
-    echo "$BIOREGISTER_GROOVY does not exist"
+    echo "$SRC_FILE does not exist"
+    exit 1
 fi
 
 
@@ -66,5 +78,6 @@ chown -R tomcat:tomcat /c2c_attachments
 chown -R tomcat:tomcat $CATALINA_HOME
 chmod -R u-w  $CATALINA_HOME/conf
 chmod -R u-w  $CATALINA_HOME/bin
+chmod -R 770 /c2c_attachments
 
 su -c "$CATALINA_HOME/bin/catalina.sh run" -s /bin/sh tomcat

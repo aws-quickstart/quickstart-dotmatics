@@ -10,8 +10,8 @@ WorkingDirectory=/project/browser
 
 ExecStartPre=
 
-ExecStart=/usr/bin/make stack_deploy_browser ENV=production
-ExecStop=/usr/bin/make stack_rm ENV=production
+ExecStart=/usr/bin/make stack_deploy_browser ENV=prod
+ExecStop=/usr/bin/make stack_rm ENV=prod
 
 [Install]
 WantedBy=multi-user.target

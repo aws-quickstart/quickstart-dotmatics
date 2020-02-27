@@ -18,20 +18,21 @@ ENV=development
 BRO_STACK_NAME=browser-$(ENV)
 SERVICE=SERVICE_not_defined
 
-TOMCAT_TAG=dotmatics
+IMAGE_TAG=dotmatics-1.0
+
+
 TOMCAT_TAR_FILE=$(shell ls docker/image/tomcat/apache*.tar.gz)
 
-BIOREGISTER_WAR=$(shell ls /efs/config/browser/bioregister-*.war)
-BIOREGISTER_GROOVY=/efs/config/browser/bioregister.groovy
-
+BIOREGISTER_GROOVY=/efs/data/bioregister.groovy
+BIOREGISTER_WAR=$(shell ls /efs/config/tmp/bioregister-*.war)
 
 build_tomcat_images:
 	echo TOMCAT_TAR_FILE=$(TOMCAT_TAR_FILE)
-	docker build --tag=tomcat:$(TOMCAT_TAG) --build-arg TOMCAT_TAR_FILE=$(TOMCAT_TAR_FILE) --rm=false -f docker/image/tomcat/Dockerfile .
+	docker build --tag=tomcat:$(IMAGE_TAG) --build-arg TOMCAT_TAR_FILE=$(TOMCAT_TAR_FILE) --rm=false -f docker/image/tomcat/Dockerfile .
 
 build_docker_images: build_tomcat_images
-	docker build --tag=browser:latest     --rm=false -f docker/image/browser/Dockerfile .
-	docker build --tag=bioregister:latest --rm=false -f docker/image/bioregister/Dockerfile .
+	docker build --tag=browser:$(IMAGE_TAG)     --rm=false -f docker/image/browser/Dockerfile .
+	docker build --tag=bioregister:$(IMAGE_TAG) --rm=false -f docker/image/bioregister/Dockerfile .
 
 dgoss_run: build_docker_images
 	GOSS_FILES_PATH=docker/image/browser/goss GOSS_SLEEP=15 dgoss run browser:latest
@@ -59,7 +60,8 @@ stack_deploy_browser: build_docker_images stack_create_network docker_cleanup cr
 	echo $(MEM_40_PCT) >  $$PWD/target/mem40pct
 	echo $(MEM_10_PCT) >  $$PWD/target/mem10pct
 
-	ls -ls /efs/config/browser/
+	chown -R ec2-user:ec2-user $$PWD/target
+
 ifeq (,$(wildcard $(BIOREGISTER_GROOVY)))
 	$(warning [WARN] $(BIOREGISTER_GROOVY) doesn't exist. It won't deploy bioregister. )
 	BROWSER_LIMIT_MEM=$(MEM_80_PCT)  BIOREGISTER_LIMIT_MEM=$(MEM_10_PCT)  TRAEFIK_LIMIT_MEM=$(MEM_10_PCT)	STACK_NAME=$(BRO_STACK_NAME) ENV=$(ENV) docker stack deploy --with-registry-auth  -c docker/stack/browser/browser.yml -c docker/stack/browser/browser-$(ENV).yml $(BRO_STACK_NAME)
@@ -71,7 +73,6 @@ else ifeq (,$(wildcard $(BIOREGISTER_WAR)))
 	make scale_down_bioregister ENV=$(ENV)
 else
 	BROWSER_LIMIT_MEM=$(MEM_40_PCT)  BIOREGISTER_LIMIT_MEM=$(MEM_40_PCT)  TRAEFIK_LIMIT_MEM=$(MEM_10_PCT)	STACK_NAME=$(BRO_STACK_NAME) ENV=$(ENV) docker stack deploy --with-registry-auth  -c docker/stack/browser/browser.yml -c docker/stack/browser/browser-$(ENV).yml $(BRO_STACK_NAME)
-
 endif
 
 
@@ -82,7 +83,7 @@ stack_rm_browser:
 
 
 scale_down_bioregister:
-	ls -ls /efs/config/browser/
+	ls -ls /efs/data/
 	docker service scale browser-$(ENV)_bioregister=0
 
 
