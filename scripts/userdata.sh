@@ -47,10 +47,13 @@ pip install -q https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstra
 /opt/aws/bin/cfn-init -v --stack $AWS_STACK_NAME --resource rAutoScalingConfigApp --configsets MountConfig --region $AWS_REGION
 crontab /home/ec2-user/crontab
 
-rm -rf /efs/tmp/
+
 
 export TMP_CONFIG_DIR=/efs/config/tmp
 export TMP_STATUS=$TMP_CONFIG_DIR/status
+
+rm -rf $TMP_CONFIG_DIR
+
 
 # Configs
 export TMP_BROWSER_PROPERTIES=$TMP_CONFIG_DIR/browser.properties
@@ -91,8 +94,8 @@ mkdir -p $EFS_BIOREGISTER_LOG_DIR
 
 
 echo "Downloading Installation files."
-aws s3 cp s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/browser.properties  $TMP_BROWSER_PROPERTIES --quiet
-aws s3 cp s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/dotmatics.license.txt  $TMP_LICENSE --quiet
+aws s3 cp s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/browser.properties  $TMP_BROWSER_PROPERTIES || true
+aws s3 cp s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/dotmatics.license.txt  $TMP_LICENSE || true
 aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/ --exclude "*.*" --include "browser-install-*.zip" --quiet
 aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/  --exclude "*.*" --include "bioregister-*.war" --quiet
 aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/  --exclude "*.*" --include "bioregister.groovy" --quiet
@@ -119,6 +122,7 @@ then
   ls -ls $TMP_CONFIG_DIR
   echo "[ERROR] Too many browser installation zip files."
   exit 1
+
 elif [ ! -f  "$TMP_LICENSE" ]; then
   echo '[ERROR] $TMP_LICENSE not found '
   exit 1
@@ -131,6 +135,7 @@ if [ -z "$TMP_BIOREGISTER_WAR_FILE" ]; then
 elif [ "$TMP_BIOREGISTER_WAR_COUNT" -gt 1 ] ; then
     echo "[ERROR] Too many bioregister installation zip files."
     exit 1
+
 else
   if [  -f "$TMP_BIOREGISTER_GROOVY" ]; then
       echo "$TMP_BIOREGISTER_WAR_FILE and $TMP_BIOREGISTER_GROOVY both exist. "
@@ -139,6 +144,16 @@ else
       exit 1
   fi
 fi
+
+
+
+if [  ! -f "$TMP_BROWSER_PROPERTIES" ]; then
+    echo '[WARN] Not found $TMP_BROWSER_PROPERTIES. Please check whether you upload browser.properties to s3.'
+    echo "Start using browser.properties file from installation zip file."
+    unzip -p $TMP_BROWSER_ZIP_FILE WEB-INF/browser.properties > $TMP_BROWSER_PROPERTIES
+    ls -ls $TMP_CONFIG_DIR
+fi
+
 
 if [  -f "$TMP_BROWSER_PROPERTIES" ]; then
     if [  -f  "$EFS_BROWSER_PROPERTIES" ]; then
@@ -167,10 +182,6 @@ if [  -f "$TMP_BROWSER_PROPERTIES" ]; then
         echo "pDnsHostedZoneID is not empty."
         sed -i '/^app.browserurl/s/=.*$/=https:\/\/'$P_DNS_NAME'.'$P_DNS_ZONE_APEX_DOMAIN'/' $TMP_BROWSER_PROPERTIES
     fi
-
-else
-    echo '[ERROR] Not found $TMP_BROWSER_PROPERTIES. Please check whether you upload browser.properties to s3.'
-    exit 2
 fi
 
 
