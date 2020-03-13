@@ -18,7 +18,7 @@ aws s3 ls s3://$P_INSTALL_BUCKET_NAME/
 aws s3 ls s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/
 
 
-yum install -y -q  unzip rsync
+yum install -y -q  unzip
 yum install -y -q  amazon-linux-extras install docker
 usermod -a -G docker ec2-user
 systemctl enable docker
@@ -64,6 +64,8 @@ export EFS_BROWSER_PROPERTIES=$EFS_BROWSER_DIR/browser.properties
 export EFS_BROWSER_LICENSE=$EFS_BROWSER_DIR/dotmatics.license.txt
 export EFS_BIOREGISTER_DIR=/efs/data/bioregister
 export EFS_BIOREGISTER_GROOVY=/efs/data/bioregister.groovy
+export EFS_CUSTOMED_BROWSER_DIR=$TMP_CONFIG_DIR/browser
+
 
 # Persistent Files
 export EFS_BROWSER_PDF_DIR=/efs/data/browser/pdf
@@ -71,6 +73,7 @@ export EFS_BROWSER_RAW_DIR="/efs/data/browser/raw data"
 export EFS_BROWSER_TEMP_DIR=/efs/data/browser/tempfiles
 export EFS_BROWSER_PROFILES_DIR=/efs/data/browser/profiles
 export EFS_BIOREGISTER_C2C_DIR=/efs/data/bioregister/c2c_attachments
+
 
 
 # Logs
@@ -90,6 +93,7 @@ mkdir -p $EFS_BIOREGISTER_C2C_DIR
 mkdir -p $EFS_BACKUP_DIR
 mkdir -p $EFS_BROWSER_LOG_DIR
 mkdir -p $EFS_BIOREGISTER_LOG_DIR
+mkdir -p $EFS_CUSTOMED_BROWSER_DIR
 
 
 
@@ -99,6 +103,7 @@ aws s3 cp s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/dotmatics.license
 aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/ --exclude "*.*" --include "browser-install-*.zip" --quiet
 aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/  --exclude "*.*" --include "bioregister-*.war" --quiet
 aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/  --exclude "*.*" --include "bioregister.groovy" --quiet
+aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/browser/   $EFS_CUSTOMED_BROWSER_DIR/
 aws s3 cp s3://$QS_BUCKET_NAME/${QS_KEY_PREFIX}infra/efs/data/WARN.txt $EFS_WARN_FILE  --quiet
 
 ls -ls $TMP_CONFIG_DIR
@@ -151,7 +156,9 @@ if [  ! -f "$TMP_BROWSER_PROPERTIES" ]; then
     echo '[WARN] Not found $TMP_BROWSER_PROPERTIES. Please check whether you upload browser.properties to s3.'
     echo "Start using browser.properties file from installation zip file."
     unzip -p $TMP_BROWSER_ZIP_FILE WEB-INF/browser.properties > $TMP_BROWSER_PROPERTIES
+    sed -i '/^db.dba.user/s/=.*$/='SYSTEM'/' $TMP_BROWSER_PROPERTIES
     ls -ls $TMP_CONFIG_DIR
+    cat $TMP_BROWSER_PROPERTIES | grep user
 fi
 
 
@@ -161,11 +168,20 @@ if [  -f "$TMP_BROWSER_PROPERTIES" ]; then
         echo "Merging new keys into current properties"
 
         docker run --rm -t -uroot \
-          -v /project/browser/MergeProps.groovy:/tmp/MergeProps.groovy \
+          -v /project/browser/groovy/MergeProps.groovy:/tmp/MergeProps.groovy \
           -v $EFS_BROWSER_PROPERTIES:/tmp/efs/browser.properties:z \
           -v $TMP_BROWSER_PROPERTIES:/tmp/tmp/browser.properties:z   \
           groovy:jre8 groovy /tmp/MergeProps.groovy
     fi
+
+
+
+    ### If db.dba.user is empty, then assign new user to it
+    docker run --rm -t -uroot \
+      -v /project/browser/groovy/CheckProps.groovy:/tmp/CheckProps.groovy \
+      -v $TMP_BROWSER_PROPERTIES:/tmp/browser.properties:z   \
+      groovy:jre8 groovy /tmp/CheckProps.groovy
+
 
     echo "Setup updates.setting=new in $TMP_BROWSER_PROPERTIES"
     sed -i '/^updates.setting/s/=.*$/=new/' $TMP_BROWSER_PROPERTIES

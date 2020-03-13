@@ -1,4 +1,4 @@
-class MergeProperties {
+class MergeProps {
    static void main(String[] args) {
 
       def efsFile = new File( "/tmp/efs/browser.properties" ) //  /efs/data/browser/WEB-INF/browser.properties

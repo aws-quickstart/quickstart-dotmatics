@@ -2,6 +2,9 @@ FROM tomcat:dotmatics-1.0
 
 WORKDIR $CATALINA_HOME
 
+ENV BROWSER_PROP_FILE /config/browser.properties
+ENV BROWSER_LICENSE_FILE /config/dotmatics.license.txt
+
 HEALTHCHECK --interval=1s --timeout=6s CMD goss -g /goss/healthcheck.yaml validate
 
 COPY docker/image/browser/docker-entrypoint.bash /docker-entrypoint.bash

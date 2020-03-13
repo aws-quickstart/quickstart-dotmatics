@@ -2,9 +2,9 @@ FROM tomcat:dotmatics-1.0
 
 WORKDIR $CATALINA_HOME
 
-ENV BROWSER_PROP_FILE /config/WEB-INF/browser.properties
-ENV BROWSER_LICENSE_FILE /config/WEB-INF/dotmatics.license.txt
-ENV BIOREGISTER_GROOVY /config/tmp/bioregister.groovy
+ENV BROWSER_PROP_FILE /config/browser.properties
+ENV BROWSER_LICENSE_FILE /config/dotmatics.license.txt
+ENV BIOREGISTER_GROOVY /config/bioregister.groovy
 
 COPY docker/image/bioregister/docker-entrypoint.bash /docker-entrypoint.bash
 COPY docker/image/tomcat/goss/goss-buildtime.yaml /goss/tomcat/goss-buildtime.yaml

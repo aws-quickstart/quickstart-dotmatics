@@ -12,8 +12,9 @@ services:
   browser:
     image: browser:dotmatics-1.0
     volumes:
-      - /efs/config/tmp/:/config/tmp:z
-      - /efs/data/browser/WEB-INF:/config/WEB-INF:z
+      - /efs/config/tmp/:/config:z
+      - /efs/data/browser/WEB-INF/browser.properties:/config/browser.properties:z
+      - /efs/data/browser/WEB-INF/dotmatics.license.txt:/config/dotmatics.license.txt:z
       - /efs/logs/browser:/usr/local/tomcat/logs:z
       - /efs/data/browser/tempfiles:/usr/local/tomcat/webapps/browser/tempfiles:z
       - /efs/data/browser/pdf:/usr/local/tomcat/webapps/browser/pdf:z
@@ -28,10 +29,11 @@ services:
   bioregister:
     image: bioregister:dotmatics-1.0
     volumes:
-      - /efs/config/tmp:/config/tmp:z
-      - /efs/data/bioregister.groovy:/config/tmp/bioregister.groovy:z
+      - /efs/config/tmp:/config:z
+      - /efs/data/bioregister.groovy:/config/bioregister.groovy:z
       - /efs/data/bioregister/c2c_attachments:/c2c_attachments:z
-      - /efs/data/browser/WEB-INF:/config/WEB-INF:z
+      - /efs/data/browser/WEB-INF/browser.properties:/config/browser.properties:z
+      - /efs/data/browser/WEB-INF/dotmatics.license.txt:/config/dotmatics.license.txt:z
       - /efs/logs/bioregister:/usr/local/tomcat/logs:z
     deploy:
       resources:
