@@ -10,8 +10,8 @@ if [ -d "/config" ]; then
     ls -la /config
 fi
 mkdir -p $CATALINA_HOME/webapps/browser
-BROWSER_ZIP_FILE=$(ls /config/tmp/browser-*.zip )
-BROWSER_ZIP_COUNT=$(ls /config/tmp/browser-*.zip | wc -l | xargs )
+BROWSER_ZIP_FILE=$(ls /config/browser-*.zip )
+BROWSER_ZIP_COUNT=$(ls /config/browser-*.zip | wc -l | xargs )
 
 if [ "$BROWSER_ZIP_COUNT" -gt 1 ]; then
     echo "[ERROR] Too many browser installation zip files."
@@ -27,39 +27,32 @@ else
     ls -ls $CATALINA_HOME/webapps/browser
 fi
 
-declare -a arr=("browser.properties"
-                "dotmatics.license.txt"
-                "columntypes.tx_"
-                "columntypes.txt"
-                "sso.adfs.template.xml"
-                "sso.centrify.template.xml"
-                "sso.generic.demo.metadata.xml"
-                "sso.generic.template.xml"
-                "sso.okta.template.xml"
-                "sso.okta.test.metadata.xml"
-                "sso.properties"
-                "filterpaths.txt"
-                "sessionclasses.txt"
-                "toolpainters.txt"
-                )
+if [ -d "/config/browser" ]; then
+    ls -ls /config/browser
+    ls -ls $CATALINA_HOME/webapps/browser
+    echo "Overwriting files from /config/browser/ to $CATALINA_HOME/webapps/browser ... "
+    rsync -au /config/browser/  $CATALINA_HOME/webapps/browser/
+fi
 
-## now loop through the above array
-for FILE in "${arr[@]}"
-do
-   echo "Checking $FILE ..."
-    if [ !  -f "/config/WEB-INF/$FILE" ]; then
-        echo "Creating empty file /config/WEB-INF/$FILE"
-        touch /config/WEB-INF/$FILE
-        chown tomcat:tomcat /config/WEB-INF/$FILE
-        chmod 644 /config/WEB-INF/$FILE
-    fi
-
-    echo "Using existing file in EFS /config/WEB-INF/$FILE"
+SRC_FILE=$BROWSER_PROP_FILE
+FILE=browser.properties
+if [ -f "$SRC_FILE" ]; then
     mv -f $CATALINA_HOME/webapps/browser/WEB-INF/$FILE $CATALINA_HOME/webapps/browser/WEB-INF/${FILE}_backup || true
-    ln -s /config/WEB-INF/$FILE $CATALINA_HOME/webapps/browser/WEB-INF/$FILE
+    ln -s $SRC_FILE $CATALINA_HOME/webapps/browser/WEB-INF/$FILE
+else
+    echo "$SRC_FILE does not exist"
+    exit 1
+fi
 
-done
-
+SRC_FILE=$BROWSER_LICENSE_FILE
+FILE=dotmatics.license.txt
+if [ -f "$SRC_FILE" ]; then
+    mv -f $CATALINA_HOME/webapps/browser/WEB-INF/$FILE $CATALINA_HOME/webapps/browser/WEB-INF/${FILE}_backup || true
+    ln -s $SRC_FILE $CATALINA_HOME/webapps/browser/WEB-INF/$FILE
+else
+    echo "$SRC_FILE does not exist"
+    exit 1
+fi
 
 chown -R tomcat:tomcat $CATALINA_HOME
 chmod -R u-w  $CATALINA_HOME/conf
