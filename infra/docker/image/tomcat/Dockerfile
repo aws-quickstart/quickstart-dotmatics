@@ -5,11 +5,12 @@ RUN  yum update -y && \
 ENV CATALINA_HOME /usr/local/tomcat
 
 ### URL of Packages
-ENV LIBREOFFICE_URL         https://downloadarchive.documentfoundation.org/libreoffice/old/6.2.8.2/rpm/x86_64/LibreOffice_6.2.8.2_Linux_x86-64_rpm.tar.gz
-ENV CORRETTO_OPENJDK_URL    https://corretto.aws/downloads/latest/amazon-corretto-8-x64-linux-jdk.rpm
-ENV TOMCAT_URL              https://archive.apache.org/dist/tomcat/tomcat-8/v8.5.50/bin/apache-tomcat-8.5.50.tar.gz
-ENV FONT_CONFIG_URL         https://rpmfind.net/linux/centos/7.7.1908/os/x86_64/Packages/fontconfig-2.13.0-4.3.el7.x86_64.rpm
-ENV DEJAVU_SANS_FONTS_URL   https://rpmfind.net/linux/centos/7.7.1908/os/x86_64/Packages/dejavu-sans-fonts-2.33-6.el7.noarch.rpm
+ENV LIBREOFFICE_URL         https://binaries.dotmatics.click/libreoffice/LibreOffice_6.2.8.2_Linux_x86-64_rpm.tar.gz
+ENV CORRETTO_OPENJDK_URL    https://binaries.dotmatics.click/amazon-corretto/java-1.8.0-amazon-corretto-devel-1.8.0_252.b09-1.x86_64.rpm
+ENV TOMCAT_URL              https://binaries.dotmatics.click/apache-tomcat/apache-tomcat-8.5.50.tar.gz
+ENV FONT_CONFIG_URL         https://binaries.dotmatics.click/fontconfig/fontconfig-2.13.0-4.3.el7.x86_64.rpm
+ENV DEJAVU_SANS_FONTS_URL   https://binaries.dotmatics.click/dejavu-sans-fonts/dejavu-sans-fonts-2.33-6.el7.noarch.rpm
+
 
 ### Downloading Installation Files
 ADD $CORRETTO_OPENJDK_URL   /tmp/corretto_openjdk.rpm
