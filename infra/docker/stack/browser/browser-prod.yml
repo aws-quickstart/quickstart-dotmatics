@@ -7,14 +7,22 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${TRAEFIK_LIMIT_MEM}
+          memory: ${TRAEFIK_MEM}
+          cpus:    ${TRAEFIK_CPU}
+
+  redirect:
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIRECT_MEM}
+          cpus:    ${REDIRECT_CPU}
 
   browser:
     image: browser:dotmatics-1.0
     volumes:
-      - /efs/config/tmp/:/config:z
-      - /efs/data/browser/WEB-INF/browser.properties:/config/browser.properties:z
-      - /efs/data/browser/WEB-INF/dotmatics.license.txt:/config/dotmatics.license.txt:z
+      - /efs/tmp/download_from_s3:/download_from_s3:z
+      - /efs/data/browser/WEB-INF/browser.properties:/symbolic_link/browser.properties:z
+      - /efs/data/browser/WEB-INF/dotmatics.license.txt:/symbolic_link/dotmatics.license.txt:z
       - /efs/logs/browser:/usr/local/tomcat/logs:z
       - /efs/data/browser/tempfiles:/usr/local/tomcat/webapps/browser/tempfiles:z
       - /efs/data/browser/pdf:/usr/local/tomcat/webapps/browser/pdf:z
@@ -24,18 +32,32 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${BROWSER_LIMIT_MEM}
+          memory: ${BROWSER_MEM}
+          cpus:    ${BROWSER_CPU}
 
   bioregister:
     image: bioregister:dotmatics-1.0
     volumes:
-      - /efs/config/tmp:/config:z
-      - /efs/data/bioregister.groovy:/config/bioregister.groovy:z
+      - /efs/tmp/download_from_s3:/download_from_s3:z
+      - /efs/data/bioregister.groovy:/symbolic_link/bioregister.groovy:z
       - /efs/data/bioregister/c2c_attachments:/c2c_attachments:z
-      - /efs/data/browser/WEB-INF/browser.properties:/config/browser.properties:z
-      - /efs/data/browser/WEB-INF/dotmatics.license.txt:/config/dotmatics.license.txt:z
+      - /efs/data/browser/WEB-INF/browser.properties:/symbolic_link/browser.properties:z
+      - /efs/data/browser/WEB-INF/dotmatics.license.txt:/symbolic_link/dotmatics.license.txt:z
       - /efs/logs/bioregister:/usr/local/tomcat/logs:z
     deploy:
       resources:
         limits:
-          memory: ${BIOREGISTER_LIMIT_MEM}
+          memory: ${BIOREGISTER_MEM}
+          cpus:    ${BIOREGISTER_CPU}
+
+
+  vortex:
+    image: vortex:dotmatics-1.0
+    volumes:
+      - /efs/tmp/download_from_s3:/download_from_s3:z
+      - /efs/data/browser/WEB-INF/dotmatics.license.txt:/symbolic_link/dotmatics.license.txt:z
+    deploy:
+      resources:
+        limits:
+          memory: ${VORTEX_MEM}
+          cpus:    ${VORTEX_CPU}

@@ -1,0 +1,54 @@
+file:
+  /docker-entrypoint.bash:
+    exists: true
+    mode: "0755"
+    size: 996
+    owner: root
+    group: root
+    filetype: file
+    contains: []
+  /usr/local/tomcat/webapps:
+    exists: true
+    mode: "0755"
+    size: 4096
+    owner: tomcat
+    group: tomcat
+    filetype: directory
+    contains: []
+  /usr/local/tomcat/webapps/manager:
+    exists: false
+    filetype: directory
+    contains: []
+group:
+  tomcat:
+    exists: true
+    gid: 1000
+  sshd:
+    exists: false
+package:
+  curl:
+    installed: true
+port:
+  tcp:8080:
+    listening: true
+    ip:
+    - 0.0.0.0
+process:
+  java:
+    running: true
+service:
+  sshd:
+    enabled: false
+    running: false
+user:
+  sshd:
+    exists: false
+  tomcat:
+    exists: true
+    uid: 1000
+    gid: 1000
+    groups:
+    - tomcat
+    home: /home/tomcat
+    shell: /bin/false
+

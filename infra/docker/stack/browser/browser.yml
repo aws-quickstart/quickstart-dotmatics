@@ -47,6 +47,7 @@ services:
     environment:
     - JAVA_OPTS=-Duser.timezone=UTC
     labels:
+    - "app.name=browser"
     - "traefik.backend.loadbalancer.sticky=true"
     - "traefik.docker.network=bro_ft_end"
     - "traefik.enable=true"
@@ -69,6 +70,7 @@ services:
       - JAVA_OPTS=-Duser.timezone=UTC
       - SLEEP_TIME=120
     labels:
+      - "app.name=bioregister"
       - "traefik.backend.loadbalancer.sticky=true"
       - "traefik.docker.network=bro_ft_end"
       - "traefik.enable=true"
@@ -77,6 +79,27 @@ services:
     healthcheck:
       start_period: 600s
       test: ["CMD", "curl", "-f", "http://localhost:8080/bioregister"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+    networks:
+      - bro_ft_end
+      - bro_bk_end
+
+  vortex:
+    image: vortex:latest
+    environment:
+      - JAVA_OPTS=-Duser.timezone=UTC
+    labels:
+      - "app.name=vortex"
+      - "traefik.backend.loadbalancer.sticky=true"
+      - "traefik.docker.network=bro_ft_end"
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=PathPrefix:/vortexweb"
+      - "traefik.port=8080"
+    healthcheck:
+      start_period: 120s
+      test: ["CMD", "curl", "-f", "http://localhost:8080/vortexweb"]
       interval: 60s
       timeout: 20s
       retries: 3

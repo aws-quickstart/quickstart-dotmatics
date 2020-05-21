@@ -21,31 +21,42 @@ systemctl start docker
 docker version
 
 
-mkdir -p /project/browser
-chmod -R 755 /project/browser
-aws s3 cp s3://$QS_BUCKET_NAME/${QS_KEY_PREFIX}infra/ /project/browser/ --recursive --quiet
-chown -R ec2-user:ec2-user /project
-ls -lsa  /project/browser/
+mkdir -p /project/quickstart-dotmatics/infra/
+mkdir -p /project/quickstart-dotmatics/scripts/bash
+mkdir -p /project/quickstart-dotmatics/scripts/groovy
 
-mv /project/browser/infrastructor/templates/browser.service.tmpl /etc/systemd/system/browser.service
+chmod -R 755 /project/quickstart-dotmatics
+aws s3 cp s3://$QS_BUCKET_NAME/${QS_KEY_PREFIX}infra/ /project/quickstart-dotmatics/infra/ --recursive --quiet
+aws s3 sync s3://$QS_BUCKET_NAME/${QS_KEY_PREFIX}scripts/bash/ /project/quickstart-dotmatics/scripts/bash/ --exclude "*.*" --include "*.sh"
+aws s3 sync s3://$QS_BUCKET_NAME/${QS_KEY_PREFIX}scripts/groovy/ /project/quickstart-dotmatics/scripts/groovy/ --exclude "*.*" --include "*.groovy"
+
+chmod +x /project/quickstart-dotmatics/scripts/bash/*.sh
+chmod +x /project/quickstart-dotmatics/infra/makefile.sh
+chown -R ec2-user:ec2-user /project
+ls -lsa  /project/quickstart-dotmatics/infra
+
+mv /project/quickstart-dotmatics/infra/infrastructor/templates/browser.service.tmpl /etc/systemd/system/browser.service
 chmod 644 /etc/systemd/system/browser.service
 chown root:root /etc/systemd/system/browser.service
 
+mv /project/quickstart-dotmatics/scripts/bash/upload.sh /usr/bin/upload
+mv /project/quickstart-dotmatics/scripts/bash/download.sh /usr/bin/download
+
 
 #curl -fsSL https://goss.rocks/install | sh
-#/usr/local/bin/goss -g  /project/browser/infrastructor/goss/goss-base.yaml validate --sleep 60s --retry-timeout 30s
+#/usr/local/bin/goss -g  /project/quickstart-dotmatics/infra/infrastructor/goss/goss-base.yaml validate --sleep 60s --retry-timeout 30s
 #echo "GOSS validate Success"
 
 curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 python get-pip.py
 pip install -q https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-/opt/aws/bin/cfn-init -v --stack $AWS_STACK_NAME --resource rAutoScalingConfigApp --configsets MountConfig --region $AWS_REGION
+/opt/aws/bin/cfn-init -v --stack $AWS_STACK_NAME --resource rAutoScalingConfigApp --configsets MountConfig --region $AWS_REGION || true
 crontab /home/ec2-user/crontab
 
 
 
-export TMP_CONFIG_DIR=/efs/config/tmp
-export TMP_STATUS=$TMP_CONFIG_DIR/status
+export TMP_CONFIG_DIR=/efs/tmp/download_from_s3
+export TMP_STATUS=/efs/tmp/userdata_status
 
 rm -rf $TMP_CONFIG_DIR
 
@@ -96,20 +107,17 @@ echo "Downloading Installation files."
 aws s3 cp s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/browser.properties  $TMP_BROWSER_PROPERTIES || true
 aws s3 cp s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/dotmatics.license.txt  $TMP_LICENSE || true
 aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/ --exclude "*.*" --include "browser-install-*.zip" --quiet
-aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/  --exclude "*.*" --include "bioregister-*.war" --quiet
-aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/  --exclude "*.*" --include "bioregister.groovy" --quiet
+aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/  --exclude "*.*" --include "bioregister*.war" --quiet
+aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/   $TMP_CONFIG_DIR/  --exclude "*.*" --include "vortexweb*.zip" --quiet
 aws s3 sync s3://$P_INSTALL_BUCKET_NAME/$P_INSTALL_BUCKET_PREFIX/browser/   $EFS_CUSTOMED_BROWSER_DIR/
 aws s3 cp s3://$QS_BUCKET_NAME/${QS_KEY_PREFIX}infra/efs/data/WARN.txt $EFS_WARN_FILE  --quiet
 
 ls -ls $TMP_CONFIG_DIR
 
 export TMP_BROWSER_ZIP_FILE=$(ls $TMP_CONFIG_DIR/browser-*)
-export TMP_BIOREGISTER_WAR_FILE=$(ls $TMP_CONFIG_DIR/bioregister-*)
 export TMP_BROWSER_ZIP_COUNT=$(ls $TMP_CONFIG_DIR/browser-* | wc -l | xargs )
-export TMP_BIOREGISTER_WAR_COUNT=$(ls $TMP_CONFIG_DIR/bioregister-* | wc -l | xargs )
 
 echo "TMP_BROWSER_ZIP_FILE=$TMP_BROWSER_ZIP_FILE"
-echo "TMP_BIOREGISTER_WAR_FILE=$TMP_BIOREGISTER_WAR_FILE"
 
 
 if [ -z "$TMP_BROWSER_ZIP_FILE" ]
@@ -128,25 +136,6 @@ elif [ ! -f  "$TMP_LICENSE" ]; then
   exit 1
 fi
 
-
-if [ -z "$TMP_BIOREGISTER_WAR_FILE" ]; then
-    echo "[WARN] There is no bioregister installation zip file."
-
-elif [ "$TMP_BIOREGISTER_WAR_COUNT" -gt 1 ] ; then
-    echo "[ERROR] Too many bioregister installation zip files."
-    exit 1
-
-else
-  if [  -f "$TMP_BIOREGISTER_GROOVY" ]; then
-      echo "$TMP_BIOREGISTER_WAR_FILE and $TMP_BIOREGISTER_GROOVY both exist. "
-  else
-      echo "[ERROR] Bioregister installation zip file exist, but $TMP_BIOREGISTER_GROOVY doesn't exist"
-      exit 1
-  fi
-fi
-
-
-
 if [  ! -f "$TMP_BROWSER_PROPERTIES" ]; then
     echo '[WARN] Not found $TMP_BROWSER_PROPERTIES. Please check whether you upload browser.properties to s3.'
     echo "Start using browser.properties file from installation zip file."
@@ -163,17 +152,15 @@ if [  -f "$TMP_BROWSER_PROPERTIES" ]; then
         echo "Merging new keys into current properties"
 
         docker run --rm -t -uroot \
-          -v /project/browser/groovy/MergeProps.groovy:/tmp/MergeProps.groovy \
+          -v /project/quickstart-dotmatics/scripts/groovy/MergeProps.groovy:/tmp/MergeProps.groovy \
           -v $EFS_BROWSER_PROPERTIES:/tmp/efs/browser.properties:z \
           -v $TMP_BROWSER_PROPERTIES:/tmp/tmp/browser.properties:z   \
           groovy:jre8 groovy /tmp/MergeProps.groovy
     fi
 
-
-
     ### If db.dba.user is empty, then assign new user to it
     docker run --rm -t -uroot \
-      -v /project/browser/groovy/CheckProps.groovy:/tmp/CheckProps.groovy \
+      -v /project/quickstart-dotmatics/scripts/groovy/CheckProps.groovy:/tmp/CheckProps.groovy \
       -v $TMP_BROWSER_PROPERTIES:/tmp/browser.properties:z   \
       groovy:jre8 groovy /tmp/CheckProps.groovy
 
@@ -186,50 +173,20 @@ if [  -f "$TMP_BROWSER_PROPERTIES" ]; then
     sed -i '/^db.dba.password/s/=.*$/='$P_DATABASE_PASS'/' $TMP_BROWSER_PROPERTIES
     sed -i '/^db.sid/s/=.*$/='$P_DATABASE_NAME'/' $TMP_BROWSER_PROPERTIES
 
-    if [ "$P_DNS_ZONE_ID" = '' ]; then
-        echo "pDnsHostedZoneID is empty."
-        sed -i '/^app.browserurl/s/=.*$/=http:\/\/'$ALB_DNS_NAME'/' $TMP_BROWSER_PROPERTIES
 
-    elif [ "$P_DNS_ZONE_APEX_DOMAIN" = '' ]; then
-        echo "pDnsZoneApexDomain is empty."
-        sed -i '/^app.browserurl/s/=.*$/=http:\/\/'$ALB_DNS_NAME'/' $TMP_BROWSER_PROPERTIES
-
+    if [ "$P_DNS_ZONE_ID" = '' ] || [ "$P_DNS_ZONE_APEX_DOMAIN" = '' ] ; then
+        echo "pDnsHostedZoneID or pDnsZoneApexDomain is empty."
+        export APP_SERVER_URL=$APP_SERVER_PROTOCOL:\/\/$ALB_DNS_NAME
     else
         echo "pDnsHostedZoneID and pDnsZoneApexDomain are not empty."
-        sed -i '/^app.browserurl/s/=.*$/=https:\/\/'$P_DNS_NAME'.'$P_DNS_ZONE_APEX_DOMAIN'/' $TMP_BROWSER_PROPERTIES
+        export APP_SERVER_URL=$APP_SERVER_PROTOCOL:\\/\\/$P_DNS_NAME.$P_DNS_ZONE_APEX_DOMAIN
     fi
+
+    sed -i '/^app.browserurl/s/=.*$/='$APP_SERVER_URL'/' $TMP_BROWSER_PROPERTIES
+
 fi
 
-
-if [  -f "$TMP_BIOREGISTER_GROOVY" ]; then
-    echo "bioregister.groovy exists,then update ServerURL and oracle host."
-
-    if [   -f  "$EFS_BIOREGISTER_GROOVY" ]; then
-        export BIOREGISTER_PASSWORD=$(cat $EFS_BIOREGISTER_GROOVY | grep password= |  cut -d"'" -f2 | xargs)
-        sed -i 's/password=\x27.*\x27/password=\x27'$BIOREGISTER_PASSWORD'\x27/g' $TMP_BIOREGISTER_GROOVY
-        cat $TMP_BIOREGISTER_GROOVY | grep password=
-    fi
-
-    if [ '$P_DNS_ZONE_ID' = '' ] ; then
-          echo "pDnsHostedZoneID is empty."
-          sed -i 's/http:\/\/localhost:8080/http:\/\/'$ALB_DNS_NAME'/g'  $TMP_BIOREGISTER_GROOVY
-
-    elif [ "$P_DNS_ZONE_APEX_DOMAIN" = '' ]; then
-          echo "pDnsZoneApexDomain is empty."
-          sed -i 's/http:\/\/localhost:8080/http:\/\/'$ALB_DNS_NAME'/g'  $TMP_BIOREGISTER_GROOVY
-    else
-          echo "pDnsHostedZoneID and pDnsZoneApexDomain are not empty."
-          sed -i 's/http:\/\/localhost:8080/https:\/\/'$P_DNS_NAME'.'$P_DNS_ZONE_APEX_DOMAIN'/g'  $TMP_BIOREGISTER_GROOVY
-    fi
-    sed -i 's/localhost/'$PRIVATE_DNS_NAME'/g'  $TMP_BIOREGISTER_GROOVY
-    sed -i 's/c:\\\\c2c_attachments/\/c2c_attachments/g' $TMP_BIOREGISTER_GROOVY
-    sed -i 's/XE/'$P_DATABASE_NAME'/g' $TMP_BIOREGISTER_GROOVY
-    echo "updating browser.properties done at $(date)"
-else
-    echo "[WARN] $TMP_BIOREGISTER_GROOVY doesn't exist,then bioregister container will not be launched."
-fi
-
-echo "updating browser.properties done at $(date)"
+echo "updated tmp browser.properties at $(date)"
 
 #Backup webapps before installation/upgrade
 export BACKUP_DATE=$(date +'%Y-%m%d-%Hh%M')
@@ -238,22 +195,12 @@ mkdir -p /efs/backup/$BACKUP_DATE/
 if [  -f "$EFS_BROWSER_PROPERTIES" ]; then
     cp -r $EFS_BROWSER_PROPERTIES /efs/backup/$BACKUP_DATE/
     cp -r $EFS_BROWSER_LICENSE /efs/backup/$BACKUP_DATE/
+    echo "backup browser.properties done at $(date)"
 fi
 
-if [  -f "$EFS_BIOREGISTER_GROOVY" ]; then
-    cp -r $EFS_BIOREGISTER_GROOVY /efs/backup/$BACKUP_DATE/
-fi
-echo "backup done at $(date)"
+BACKUP_DATE=$BACKUP_DATE /project/quickstart-dotmatics/scripts/bash/update-bioregister-groovy.sh debug
 
-
-echo "copy config file to efs"
-
-if [  -f "$TMP_BIOREGISTER_GROOVY" ]; then
-  echo "copy bioregister ... "
-  yes | cp $TMP_BIOREGISTER_GROOVY $EFS_BIOREGISTER_GROOVY
-  rm -rf $TMP_BIOREGISTER_GROOVY
-fi
-
+echo "copy browser properties to efs"
 yes | cp $TMP_BROWSER_PROPERTIES $EFS_BROWSER_PROPERTIES
 yes | cp $TMP_LICENSE $EFS_BROWSER_LICENSE
 
@@ -276,6 +223,14 @@ systemctl status browser.service
 docker version
 docker service ls
 
+echo "export EFS_BROWSER_PROPERTIES=$EFS_BROWSER_PROPERTIES" >> /etc/environment
+echo "export TMP_BIOREGISTER_GROOVY=$TMP_BIOREGISTER_GROOVY" >> /etc/environment
+echo "export EFS_BIOREGISTER_GROOVY=$EFS_BIOREGISTER_GROOVY" >> /etc/environment
+echo "export TMP_CONFIG_DIR=$TMP_CONFIG_DIR" >> /etc/environment
+echo "export APP_SERVER_URL=$APP_SERVER_URL" >> /etc/environment
+
+source /etc/environment
+
 echo "Installation finished"
 echo "userdata done." >> $TMP_STATUS
-/opt/aws/bin/cfn-signal -e $? --stack $AWS_STACK_NAME --resource rAutoScalingGroupApp --region $AWS_REGION
+/opt/aws/bin/cfn-signal -e $? --stack $AWS_STACK_NAME --resource rAutoScalingGroupApp --region $AWS_REGION || true

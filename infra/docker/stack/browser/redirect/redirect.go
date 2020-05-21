@@ -10,7 +10,7 @@ import (
 )
 
 const default_port = "8080"
-const default_url = "https://jira.dotmatics.com"
+const default_url = "/browser"
 
 type Server struct {
 	url string

@@ -6,12 +6,12 @@ set -e
 set -u
 set -x
 
-if [ -d "/config" ]; then
-    ls -la /config
+if [ -d "/symbolic_link" ]; then
+    ls -la /symbolic_link
 fi
 mkdir -p $CATALINA_HOME/webapps/browser
-BROWSER_ZIP_FILE=$(ls /config/browser-*.zip )
-BROWSER_ZIP_COUNT=$(ls /config/browser-*.zip | wc -l | xargs )
+BROWSER_ZIP_FILE=$(ls /download_from_s3/browser-*.zip )
+BROWSER_ZIP_COUNT=$(ls /download_from_s3/browser-*.zip | wc -l | xargs )
 
 if [ "$BROWSER_ZIP_COUNT" -gt 1 ]; then
     echo "[ERROR] Too many browser installation zip files."
@@ -27,11 +27,11 @@ else
     ls -ls $CATALINA_HOME/webapps/browser
 fi
 
-if [ -d "/config/browser" ]; then
-    ls -ls /config/browser
+if [ -d "/download_from_s3/browser" ]; then
+    ls -ls /download_from_s3/browser
     ls -ls $CATALINA_HOME/webapps/browser
-    echo "Overwriting files from /config/browser/ to $CATALINA_HOME/webapps/browser ... "
-    rsync -au /config/browser/  $CATALINA_HOME/webapps/browser/
+    echo "Overwriting files from /download_from_s3/browser/ to $CATALINA_HOME/webapps/browser ... "
+    rsync -au /download_from_s3/browser/  $CATALINA_HOME/webapps/browser/
 fi
 
 SRC_FILE=$BROWSER_PROP_FILE
@@ -44,7 +44,7 @@ else
     exit 1
 fi
 
-SRC_FILE=$BROWSER_LICENSE_FILE
+SRC_FILE=$DOTMATICS_LICENSE_FILE
 FILE=dotmatics.license.txt
 if [ -f "$SRC_FILE" ]; then
     mv -f $CATALINA_HOME/webapps/browser/WEB-INF/$FILE $CATALINA_HOME/webapps/browser/WEB-INF/${FILE}_backup || true

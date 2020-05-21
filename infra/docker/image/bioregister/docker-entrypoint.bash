@@ -7,8 +7,8 @@ set -u
 set -x
 
 
-if [ -d "/config" ]; then
-    ls -la /config
+if [ -d "/symbolic_link" ]; then
+    ls -la /symbolic_link
 fi
 
 #  Waiting for browser
@@ -22,8 +22,8 @@ else
     date
 fi
 
-BIOREGISTER_WAR_FILE=$(ls /config/bioregister*.war)
-BIOREGISTER_WAR_COUNT=$(ls /config/bioregister*.war | wc -l | xargs )
+BIOREGISTER_WAR_FILE=$(ls /download_from_s3/bioregister*.war)
+BIOREGISTER_WAR_COUNT=$(ls /download_from_s3/bioregister*.war | wc -l | xargs )
 
 if [ "$BIOREGISTER_WAR_COUNT" -gt 1 ]; then
     echo "[ERROR] Too many bioregister installation war files."
@@ -52,7 +52,7 @@ else
 fi
 
 
-SRC_FILE=$BROWSER_LICENSE_FILE
+SRC_FILE=$DOTMATICS_LICENSE_FILE
 FILE=dotmatics.license.txt
 if [ -f "$SRC_FILE" ]; then
     mv -f $CATALINA_HOME/webapps/browser/WEB-INF/$FILE $CATALINA_HOME/webapps/browser/WEB-INF/${FILE}_backup || true

@@ -23,9 +23,6 @@ IMAGE_TAG=dotmatics-1.0
 
 TOMCAT_TAR_FILE=$(shell ls docker/image/tomcat/apache*.tar.gz)
 
-BIOREGISTER_GROOVY=/efs/data/bioregister.groovy
-BIOREGISTER_WAR=$(shell ls /efs/config/tmp/bioregister-*.war)
-
 build_tomcat_images:
 	echo TOMCAT_TAR_FILE=$(TOMCAT_TAR_FILE)
 	docker build --tag=tomcat:$(IMAGE_TAG) --build-arg TOMCAT_TAR_FILE=$(TOMCAT_TAR_FILE) --rm=false -f docker/image/tomcat/Dockerfile .
@@ -33,6 +30,7 @@ build_tomcat_images:
 build_docker_images: build_tomcat_images
 	docker build --tag=browser:$(IMAGE_TAG)     --rm=false -f docker/image/browser/Dockerfile .
 	docker build --tag=bioregister:$(IMAGE_TAG) --rm=false -f docker/image/bioregister/Dockerfile .
+	docker build --tag=vortex:$(IMAGE_TAG)      --rm=false -f docker/image/vortex/Dockerfile .
 
 dgoss_run: build_docker_images
 	GOSS_FILES_PATH=docker/image/browser/goss GOSS_SLEEP=15 dgoss run browser:latest
@@ -52,29 +50,7 @@ create_volume_dir:
 	mkdir -p $$PWD/target/docker/volume/$(ENV)
 
 stack_deploy_browser: build_docker_images stack_create_network docker_cleanup create_volume_dir
-	$(eval MEM_80_PCT=$(shell grep MemTotal /proc/meminfo | awk '{print $$2 / 1024*80/100"m"}'  ))
-	$(eval MEM_40_PCT=$(shell grep MemTotal /proc/meminfo | awk '{print $$2 / 1024*40/100"m"}'  ))
-	$(eval MEM_10_PCT=$(shell grep MemTotal /proc/meminfo | awk '{print $$2 / 1024*10/100"m"}'  ))
-
-	echo $(MEM_80_PCT) >  $$PWD/target/mem80pct
-	echo $(MEM_40_PCT) >  $$PWD/target/mem40pct
-	echo $(MEM_10_PCT) >  $$PWD/target/mem10pct
-
-	chown -R ec2-user:ec2-user $$PWD/target
-
-ifeq (,$(wildcard $(BIOREGISTER_GROOVY)))
-	$(warning [WARN] $(BIOREGISTER_GROOVY) doesn't exist. It won't deploy bioregister. )
-	BROWSER_LIMIT_MEM=$(MEM_80_PCT)  BIOREGISTER_LIMIT_MEM=$(MEM_10_PCT)  TRAEFIK_LIMIT_MEM=$(MEM_10_PCT)	STACK_NAME=$(BRO_STACK_NAME) ENV=$(ENV) docker stack deploy --with-registry-auth  -c docker/stack/browser/browser.yml -c docker/stack/browser/browser-$(ENV).yml $(BRO_STACK_NAME)
-	make scale_down_bioregister ENV=$(ENV)
-
-else ifeq (,$(wildcard $(BIOREGISTER_WAR)))
-	$(warning [WARN] $(BIOREGISTER_WAR) doesn't exist. It won't deploy bioregister. )
-	BROWSER_LIMIT_MEM=$(MEM_80_PCT)  BIOREGISTER_LIMIT_MEM=$(MEM_10_PCT)  TRAEFIK_LIMIT_MEM=$(MEM_10_PCT)	STACK_NAME=$(BRO_STACK_NAME) ENV=$(ENV) docker stack deploy --with-registry-auth  -c docker/stack/browser/browser.yml -c docker/stack/browser/browser-$(ENV).yml $(BRO_STACK_NAME)
-	make scale_down_bioregister ENV=$(ENV)
-else
-	BROWSER_LIMIT_MEM=$(MEM_40_PCT)  BIOREGISTER_LIMIT_MEM=$(MEM_40_PCT)  TRAEFIK_LIMIT_MEM=$(MEM_10_PCT)	STACK_NAME=$(BRO_STACK_NAME) ENV=$(ENV) docker stack deploy --with-registry-auth  -c docker/stack/browser/browser.yml -c docker/stack/browser/browser-$(ENV).yml $(BRO_STACK_NAME)
-endif
-
+	 ENV=$(ENV) BRO_STACK_NAME=$(BRO_STACK_NAME) ./makefile.sh stack_deploy_browser
 
 stack_rm:  stack_rm_browser
 
@@ -85,6 +61,10 @@ stack_rm_browser:
 scale_down_bioregister:
 	ls -ls /efs/data/
 	docker service scale browser-$(ENV)_bioregister=0
+
+scale_down_vortex:
+	ls -ls /efs/data/
+	docker service scale browser-$(ENV)_vortex=0
 
 
 

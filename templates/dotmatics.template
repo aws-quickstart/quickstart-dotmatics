@@ -21,6 +21,7 @@ Metadata:
       - pDnsHostedZoneID
       - pDnsHostedZoneApexDomain
       - pCreateTLSCert
+      - pApplicationServerProtocol
       - pLoadBalancerType
       - pSecurityGroupForWebAccess
       - pWebAccessCIDR
@@ -57,6 +58,8 @@ Metadata:
     ParameterLabels:
       pCreateTLSCert:
         default: Create a TLS Certificate for the Load Balancer?
+      pApplicationServerProtocol:
+        default: Use HTTP or HTTPS on application server.
       pStandbyIPAddress:
         default: Standby Database Private IP (Only required if using Oracle Data Guard)
       pPrimaryIPAddress:
@@ -127,6 +130,13 @@ Parameters:
     - 'false'
     Default: 'false'
     Description: Do you want to create and associate a TLS certificate with the Application Load Balancer? This template performs domain validation as documented here - https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-validate-email.html. You will need to setup a certificate after the deployment if you set this to false.
+    Type: String
+  pApplicationServerProtocol:
+    AllowedValues:
+    - 'http'
+    - 'https'
+    Default: 'http'
+    Description: Once HTTPS is enabled, HTTPS will be configured in properties file of application, but you still need to manually associate a TLS certificate with the Application Load Balancer
     Type: String
   pStandbyIPAddress:
     AllowedPattern: "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
@@ -354,6 +364,7 @@ Conditions:
   cWebAccessSG: !Not [ !Equals [ !Ref pSecurityGroupForWebAccess, "" ] ]
   cNoWebAccessSG: !Equals [ !Ref pSecurityGroupForWebAccess, "" ]
   cCreateTLSCert: !Equals [ !Ref pCreateTLSCert, "true" ]
+  pEnableHttpsOnApplicationServer: !Equals [ !Ref pApplicationServerProtocol, "https" ]
   cSkipTLSCert: !Equals [ !Ref pCreateTLSCert, "false" ]
 Resources:
   # If a hosted zone is specified, create a DNS Record
@@ -660,23 +671,27 @@ Resources:
             whoami
 
             export USERDATA_FILE=/tmp/userdata.sh
-            aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/userdata.sh $USERDATA_FILE
+            aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/bash/userdata.sh $USERDATA_FILE
             chmod +x $USERDATA_FILE
 
-            QS_BUCKET_NAME=${QSS3BucketName} \
-            QS_KEY_PREFIX=${QSS3KeyPrefix} \
-            P_INSTALL_BUCKET_NAME=${pInstallBucketName} \
-            P_INSTALL_BUCKET_PREFIX=${pInstallBucketPrefix} \
-            PRIVATE_DNS_NAME=${rOracleStack.Outputs.PrivateDNSName} \
-            P_DATABASE_PASS=${pDatabasePass} \
-            P_DATABASE_NAME=${pDatabaseName} \
-            P_DNS_ZONE_ID=${pDnsHostedZoneID} \
-            P_DNS_NAME=${pDNSName} \
-            P_DNS_ZONE_APEX_DOMAIN=${pDnsHostedZoneApexDomain} \
-            ALB_DNS_NAME=${rApplicationLoadBalancer.DNSName} \
-            DATABASE_PORT=${databasePort} \
-            AWS_STACK_NAME=${AWS::StackName} \
-            AWS_REGION=${AWS::Region} \
+            echo "export QS_BUCKET_NAME=${QSS3BucketName}" >> /etc/environment
+            echo "export QS_KEY_PREFIX=${QSS3KeyPrefix}" >> /etc/environment
+            echo "export P_INSTALL_BUCKET_NAME=${pInstallBucketName}" >> /etc/environment
+            echo "export P_INSTALL_BUCKET_PREFIX=${pInstallBucketPrefix}" >> /etc/environment
+            echo "export PRIVATE_DNS_NAME=${rOracleStack.Outputs.PrivateDNSName}" >> /etc/environment
+            echo "export P_DATABASE_PASS=${pDatabasePass}" >> /etc/environment
+            echo "export P_DATABASE_NAME=${pDatabaseName}" >> /etc/environment
+            echo "export P_DNS_ZONE_ID=${pDnsHostedZoneID}" >> /etc/environment
+            echo "export P_DNS_NAME=${pDNSName}" >> /etc/environment
+            echo "export P_DNS_ZONE_APEX_DOMAIN=${pDnsHostedZoneApexDomain}" >> /etc/environment
+            echo "export ALB_DNS_NAME=${rApplicationLoadBalancer.DNSName}" >> /etc/environment
+            echo "export DATABASE_PORT=${databasePort}" >> /etc/environment
+            echo "export AWS_STACK_NAME=${AWS::StackName}" >> /etc/environment
+            echo "export AWS_REGION=${AWS::Region}" >> /etc/environment
+            echo "export APP_SERVER_PROTOCOL=${pApplicationServerProtocol}" >> /etc/environment
+
+            source /etc/environment
+
             $USERDATA_FILE
 
 
@@ -890,15 +905,11 @@ Resources:
 Outputs:
   oLoadBalancerDNS:
     Description: DNS of Load Balancer to access Dotmatics
-    Value: !Sub ${rApplicationLoadBalancer.DNSName}/browser
+    Value: !Sub http://${rApplicationLoadBalancer.DNSName}/browser
   oDNSUrl:
     Condition: cDNSRecord
     Description: URL to Load Balancer to access Dotmaics application.
-    Value: !Sub http://${pDNSName}.${pDnsHostedZoneApexDomain}/browser
-  oDNSUrlTLS:
-    Condition: cCreateTLSCert
-    Description: URL to Load Balancer to access Dotmaics application over TLS.
-    Value: !Sub https://${pDNSName}.${pDnsHostedZoneApexDomain}/browser
+    Value: !Sub ${pApplicationServerProtocol}://${pDNSName}.${pDnsHostedZoneApexDomain}/browser
   oWebAccessCidrSG:
     Condition: cNoWebAccessSG
     Description: SecurityGroup Id of Web Access Cidr
