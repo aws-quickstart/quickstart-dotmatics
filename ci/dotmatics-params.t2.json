@@ -130,5 +130,9 @@
   {
     "ParameterKey": "QSS3KeyPrefix",
     "ParameterValue": "quickstart-dotmatics/"
+  },
+  {
+    "ParameterKey": "pApplicationServerProtocol",
+    "ParameterValue": "http"
   }
 ]

@@ -70,5 +70,9 @@
     {
         "ParameterKey": "pOracleInstanceType",
         "ParameterValue": "t2.large"
+    },
+    {
+        "ParameterKey": "pApplicationServerProtocol",
+        "ParameterValue": "http"
     }
 ]
