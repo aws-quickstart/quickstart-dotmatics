@@ -176,7 +176,7 @@ if [  -f "$TMP_BROWSER_PROPERTIES" ]; then
 
     if [ "$P_DNS_ZONE_ID" = '' ] || [ "$P_DNS_ZONE_APEX_DOMAIN" = '' ] ; then
         echo "pDnsHostedZoneID or pDnsZoneApexDomain is empty."
-        export APP_SERVER_URL=$APP_SERVER_PROTOCOL:\/\/$ALB_DNS_NAME
+        export APP_SERVER_URL=$APP_SERVER_PROTOCOL:\\/\\/$ALB_DNS_NAME
     else
         echo "pDnsHostedZoneID and pDnsZoneApexDomain are not empty."
         export APP_SERVER_URL=$APP_SERVER_PROTOCOL:\\/\\/$P_DNS_NAME.$P_DNS_ZONE_APEX_DOMAIN
