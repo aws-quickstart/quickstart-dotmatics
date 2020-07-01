@@ -54,11 +54,10 @@ pip install -q https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstra
 crontab /home/ec2-user/crontab
 
 
-
+rm -rf /efs/tmp/
 export TMP_CONFIG_DIR=/efs/tmp/download_from_s3
 export TMP_STATUS=/efs/tmp/userdata_status
 
-rm -rf $TMP_CONFIG_DIR
 
 
 # Configs
@@ -74,6 +73,7 @@ export EFS_CUSTOMED_BROWSER_DIR=$TMP_CONFIG_DIR/browser
 
 
 # Persistent Files
+export EFS_BROWSER_IMAGES_DIR=/efs/data/browser/images
 export EFS_BROWSER_PDF_DIR=/efs/data/browser/pdf
 export EFS_BROWSER_RAW_DIR="/efs/data/browser/raw data"
 export EFS_BROWSER_TEMP_DIR=/efs/data/browser/tempfiles
@@ -90,6 +90,7 @@ export EFS_WARN_FILE=/efs/data/WARN.txt
 
 mkdir -p $TMP_CONFIG_DIR
 mkdir -p $EFS_BROWSER_DIR
+mkdir -p $EFS_BROWSER_IMAGES_DIR
 mkdir -p $EFS_BROWSER_PDF_DIR
 mkdir -p "$EFS_BROWSER_RAW_DIR"
 mkdir -p $EFS_BROWSER_TEMP_DIR
@@ -228,6 +229,7 @@ echo "export TMP_BIOREGISTER_GROOVY=$TMP_BIOREGISTER_GROOVY" >> /etc/environment
 echo "export EFS_BIOREGISTER_GROOVY=$EFS_BIOREGISTER_GROOVY" >> /etc/environment
 echo "export TMP_CONFIG_DIR=$TMP_CONFIG_DIR" >> /etc/environment
 echo "export APP_SERVER_URL=$APP_SERVER_URL" >> /etc/environment
+echo "export EFS_CUSTOMED_BROWSER_DIR=$EFS_CUSTOMED_BROWSER_DIR"  >> /etc/environment
 
 source /etc/environment
 
