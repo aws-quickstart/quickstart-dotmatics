@@ -5,3 +5,4 @@
 [submodule "submodules/quickstart-oracle-database"]
 	path = submodules/quickstart-oracle-database
 	url = https://github.com/paulu-aws/quickstart-oracle-database.git
+	branch = main
